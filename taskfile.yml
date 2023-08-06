@@ -68,6 +68,8 @@ tasks:
 
   run:node:
     desc: Run nodejs app
+    deps:
+      - build:java
     cmds:
       - $node
         --vm.cp ../jars/HelloWorld.jar

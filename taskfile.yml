@@ -1,0 +1,35 @@
+version: "3"
+
+env:
+  native-image: docker exec graal native-image
+  java: docker exec graal java
+  javac: docker exec graal javac
+  jar: docker exec graal jar
+
+tasks:
+  prepare:
+    desc: Create an environment for graal
+    cmds:
+      - docker run --name graal
+        -itd
+        -w /app
+        --restart unless-stopped
+        -v $(pwd):/app
+        -u $(id -u ${USER}):$(id -g ${USER})
+        ghcr.io/graalvm/graalvm-ce
+        /bin/bash
+      - docker exec -u root graal gu install native-image nodejs
+
+  build:java:
+    desc: Build whatever inside src
+    cmds:
+      - mkdir -p jars dist
+      - $javac src/*.java -d dist
+      - $jar --create --file jars/HelloWorld.jar
+        -m src/META-INF/MANIFEST.MF
+        -C dist .
+
+  clean:
+    desc: Clean environment, things get lost
+    cmds:
+      - docker rm -f graal

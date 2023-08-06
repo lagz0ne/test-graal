@@ -1,7 +1,12 @@
 node_modules
+.task 
 
 dist/*
 !dist/.gitkeep
 
 jars/*
 !jars/.gitkeep
+
+shared/*
+
+exec/*

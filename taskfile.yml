@@ -1,10 +1,12 @@
 version: "3"
 
 env:
-  native-image: docker exec graal native-image
+  image: docker exec graal native-image
   java: docker exec graal java
   javac: docker exec graal javac
   jar: docker exec graal jar
+  node: docker exec -w /app/node-app graal node
+  npm: docker exec -w /app/node-app graal npm
 
 tasks:
   prepare:
@@ -19,17 +21,61 @@ tasks:
         ghcr.io/graalvm/graalvm-ce
         /bin/bash
       - docker exec -u root graal gu install native-image nodejs
+      - docker exec -u root graal mkdir -p /.npm
+      - docker exec -u root graal chown -R 1000:1000 "/.npm"
 
   build:java:
     desc: Build whatever inside src
     cmds:
-      - mkdir -p jars dist
+      - mkdir -p jars
       - $javac src/*.java -d dist
       - $jar --create --file jars/HelloWorld.jar
         -m src/META-INF/MANIFEST.MF
         -C dist .
+    sources:
+      - "src/*"
+    generates:
+      - "dist/*"
+      - "jars/*"
+
+  native-exec:
+    desc: Build native-executable
+    deps:
+      - build:java
+    cmds:
+      - mkdir -p exec
+      - $image -jar jars/HelloWorld.jar
+        -o exec/HelloWorld
+    sources:
+      - "jars/*"
+    generates:
+      - "exec/*"
+
+  native-library:
+    desc: Build native-executable
+    deps:
+      - build:java
+    cmds:
+      - mkdir -p shared
+      - $image -jar jars/HelloWorld.jar
+        --shared
+        -o shared/HelloWorld
+      - mv graal* shared/
+    sources:
+      - "jars/*"
+    generates:
+      - "shared/*"
+
+  run:node:
+    desc: Run nodejs app
+    cmds:
+      - $node
+        --vm.cp ../jars/HelloWorld.jar
+        --jvm
+        index.js
 
   clean:
     desc: Clean environment, things get lost
     cmds:
       - docker rm -f graal
+      - rm -rf exec/* jars/* shared/* dist/*
